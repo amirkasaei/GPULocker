@@ -120,3 +120,19 @@ def notifications():
                               unread_notifications_count=unread_count)
     finally:
         client.close()
+        
+        
+@notification_bp.route('/mark_all_notifications_read', methods=['POST'])
+@login_required
+def mark_all_notifications_read():
+    client, db = get_db_connection()
+    try:
+        # Update all unread notifications for the logged-in user
+        result = db.notifications.update_many(
+            {'username': session['username'], 'read': {'$ne': True}},
+            {'$set': {'read': True}}
+        )
+        flash(f"Marked {result.modified_count} notifications as read.", "success")
+        return redirect(url_for('notification.notifications'))
+    finally:
+        client.close()

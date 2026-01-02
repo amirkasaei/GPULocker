@@ -70,7 +70,7 @@ def tail(file, n):
 @dashboard_bp.route('/logs')
 @login_required
 def get_logs():
-    LOG_FILE_PATH="/home/amin/GPULocker/gpulock.log"
+    LOG_FILE_PATH="/home/user01/GPULocker/gpulock.log"
     try:
         lines = int(request.args.get('lines', 200))  # Default to 200 lines
         lines = max(1, min(300, lines))  # Limit between 1 and 300

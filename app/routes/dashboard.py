@@ -252,12 +252,53 @@ def release_gpu():
         # Use the common unallocate function with the comment
         if unallocate_gpu(user_username, gpu_id, gpu_type, allocation_id, db, comment=comment):
             if is_admin and username != user_username:
-                flash(f'Successfully released GPU {gpu_id} from user {user_username}', 'success')
+                # Admin releasing GPU on behalf of a user
+                flash(
+                    f'Successfully released GPU {gpu_id} from user {user_username}. '
+                    'A 30-minute cooldown has been applied before the user can reserve again.',
+                    'success'
+                )
                 logger.info(f"Admin {username} released GPU {gpu_id} from user {user_username}")
+
+                # Apply cooldown for the actual GPU owner
+                db.users.update_one(
+                    {'username': user_username},
+                    {'$set': {'last_manual_release': datetime.utcnow()}}
+                )
+                logger.info(f"Cooldown applied for user {user_username} after admin release")
+
+                # ✅ Notify the user
+                send_notification(
+                    user_username,
+                    f"Your GPU (ID {gpu_id}, type {gpu_type}) was released by an admin. "
+                    "You will not be able to reserve another GPU for 30 minutes."
+                )
+
             else:
-                flash(f'Successfully released GPU {gpu_id}', 'success')
+                # Normal user releasing their own GPU
+                flash(
+                    f'Successfully released GPU {gpu_id} from user {user_username}. '
+                    'A 30-minute cooldown has been applied before the user can reserve again.',
+                    'success'
+                )
+                logger.info(f"Admin {username} released GPU {gpu_id} from user {user_username}")
+
+                # Apply cooldown
+                db.users.update_one(
+                    {'username': username},
+                    {'$set': {'last_manual_release': datetime.utcnow()}}
+                )
+                logger.info(f"Cooldown applied for user {username} after manual release")
+
+                # ✅ Notify the user
+                send_notification(
+                    username,
+                    f"You manually released GPU (ID {gpu_id}, type {gpu_type}). "
+                    "You will not be able to reserve another GPU for 30 minutes."
+                )
         else:
             flash('Failed to release GPU', 'error')
+
                 
     except Exception as e:
         logger.error(f"Error in release_gpu route: {str(e)}")
@@ -346,6 +387,30 @@ def lock_gpu():
     requested_gpu_dict = {}
     requested_days = {}
     username = session['username']
+    
+    # --- cooldown check (30 minutes after manual release) ---
+    try:
+        with MongoDBConnection() as (client, db):
+            user_entry = db.users.find_one({'username': username}, {'last_manual_release': 1})
+            if user_entry and user_entry.get('last_manual_release'):
+                from datetime import timedelta
+                last_release = user_entry['last_manual_release']
+                now_utc = datetime.utcnow()
+                if (now_utc - last_release) < timedelta(minutes=30):
+                    remaining = 30 - int((now_utc - last_release).total_seconds() / 60)
+                    flash(f"You must wait {remaining} minute(s) before reserving a new GPU after a manual release.", "error")
+                    # ✅ Send notification to remind them
+                    send_notification(
+                        username,
+                        f"You attempted to reserve a GPU, but you are still under cooldown for another {remaining} minute(s). "
+                        "Please wait until the 30-minute cooldown expires."
+                    )
+
+return redirect(url_for('dashboard.dashboard'))
+
+    except Exception as e:
+        logger.warning(f"Cooldown check failed: {e}")
+
     
     # Check if user is admin
     authorized_users = config('PRIVILEGED_USERS', cast=Csv())

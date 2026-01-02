@@ -405,9 +405,7 @@ def lock_gpu():
                         f"You attempted to reserve a GPU, but you are still under cooldown for another {remaining} minute(s). "
                         "Please wait until the 30-minute cooldown expires."
                     )
-
-return redirect(url_for('dashboard.dashboard'))
-
+                    return redirect(url_for('dashboard.dashboard'))
     except Exception as e:
         logger.warning(f"Cooldown check failed: {e}")
 

@@ -385,7 +385,7 @@ def schedule_allocation_monitoring(allocation_id, allocation_data):
         utilization_period_minutes = config('GPU_ACTIVITY_CHECK_MINUTES', default=5, cast=int)
         
        
-        idle_check_hours=config('REVOKE_IDLE_GPU_AFTER_HOURS', default=24, cast=int)
+        idle_check_hours=config('REVOKE_IDLE_GPU_AFTER_HOURS', default=2, cast=int)
         add_job_to_redis({
                 'job_function': "check_allocation_utilization",
                 'job_input': allocation_data,
@@ -827,7 +827,7 @@ def check_and_revoke_idle_allocation(allocation):
         allocation_id = allocation['_id']
         
         # Get configuration values
-        idle_hours = config('REVOKE_IDLE_GPU_AFTER_HOURS', default=24, cast=int)
+        idle_hours = config('REVOKE_IDLE_GPU_AFTER_HOURS', default=2, cast=int)
         min_gpu_util = config('MIN_GPU_UTILIZATION_PERCENT', default=5.0, cast=float)
         min_gpu_mem = config('MIN_GPU_MEMORY_GB', default=2.0, cast=float) * 1024  #MB
         

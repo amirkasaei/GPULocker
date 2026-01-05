@@ -322,9 +322,10 @@ def extend_gpu():
         return redirect(url_for('dashboard.dashboard'))
     
     try:
+        max_extension_days = config('MAX_EXTENSION_DAYS', default=2, cast=int)
         extension_days = int(extension_days)
-        if extension_days < 1 or extension_days > 7:
-            flash('Extension days must be between 1 and 7', 'error')
+        if extension_days < 1 or extension_days > max_extension_days:
+            flash(f'Extension days must be between 1 and {max_extension_days}', 'error')
             return redirect(url_for('dashboard.dashboard'))
     except ValueError:
         flash('Invalid extension days value', 'error')
@@ -444,8 +445,9 @@ def lock_gpu():
                 requested_days[gpu_type] = int(days)
                 
                 # Validate days range
-                if requested_days[gpu_type] <= 0 or requested_days[gpu_type] > 7:
-                    flash("Number of days must be between 1 and 7", "error")
+                max_reservation_days = config('MAX_RESERVERVATION_DAYS', default=3, cast=int)
+                if requested_days[gpu_type] <= 0 or requested_days[gpu_type] > max_reservation_days:
+                    flash(f"Number of days must be between 1 and {max_reservation_days}", "error")
                     return redirect(url_for('dashboard.dashboard'))
                 
             except ValueError as e:
